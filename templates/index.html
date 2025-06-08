@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Premios Nobel</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Ganadores por país</h1>
+  <canvas id="barChart"></canvas>
+
+  <h2> Ganadores aletorios</h2>
+  <button onclick="loadRandomWinners()">Cargar 5 ganadores aleatorios</button>
+  <ul id="winnerList"></ul>
+
+  <div style="margin-bottom: 10px;">
+   <h2 style="margin-bottom: 5px;">Categorías por país</h2>
+   <button onclick="loadCategoryChart()">Cargar categorías por país</button>
+  </div>
+
+  <canvas id="stackedBarChart" width="800" height="400"></canvas>
+
+
+  <script>
+    fetch('/api/country_counts')
+      .then(res => res.json())
+      .then(data => {
+        new Chart(document.getElementById("barChart"), {
+          type: 'bar',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: 'Ganadores',
+              data: data.values,
+              backgroundColor: 'rgba(54, 162, 235, 0.6)'
+            }]
+          }
+        });
+      });
+
+    function loadRandomWinners() {
+      fetch('/api/random_winners')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById("winnerList");
+          list.innerHTML = '';
+          data.forEach(w => {
+            const li = document.createElement("li");
+            li.textContent = `${w.name} (${w.year}) - ${w.category} - ${w.country}`;
+            list.appendChild(li);
+          });
+        });
+    }
+  </script>
+  
+  <script>
+   // ¡Primero definimos getRandomColor fuera!
+   function getRandomColor() {
+     return `rgba(${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, 0.6)`;
+   }
+
+   function loadCategoryChart() {
+     fetch('/api/categories_by_country')
+       .then(res => res.json())
+       .then(data => {
+         const countries = Object.keys(data);
+         const allCategories = new Set();
+
+         countries.forEach(c => {
+           Object.keys(data[c]).forEach(cat => allCategories.add(cat));
+         });
+ 
+         const categories = Array.from(allCategories);
+         const datasets = categories.map(cat => {
+           return {
+             label: cat,
+             data: countries.map(c => data[c][cat] || 0),
+             backgroundColor: getRandomColor()
+           };
+         });
+ 
+         new Chart(document.getElementById("stackedBarChart"), {
+           type: 'bar',
+           data: {
+             labels: countries,
+             datasets: datasets
+           },
+           options: {
+             responsive: true,
+             plugins: {
+               title: {
+                 display: true,
+                 text: 'Cantidad de premios Nobel por categoría y país'
+               },
+               tooltip: {
+                 mode: 'index',
+                 intersect: false
+               } 
+             },
+             scales: {
+               x: {
+                 stacked: true
+               },
+               y: {
+                 stacked: true
+               }
+             }
+           }
+         });
+       })
+       .catch(err => console.error("Error al cargar los datos de categorías:", err));
+   }
+  </script>
+
+</body>
+</html>
